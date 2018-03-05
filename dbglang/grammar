@@ -1,0 +1,42 @@
+Token tk
+
+PrimaryDefList Throw [','] ::= FieldDef (',' FieldDef)*;
+
+FieldDefList Throw ['\n'] ::= (FieldDef '\n'*)* '\n'*;
+
+TableDef Throw ['(', ')', '{', '}', '\n']
+		::= Symbol '(' PrimaryDefList ')' '\n'*  
+			'{'
+		        '\n'*
+				FieldDefList
+				[ReprDef '\n'*]
+			'}';
+
+FieldDef Throw [':'] ::= Symbol ':' Type;
+
+Type  Throw ['='] ::= Symbol Option* ['=' Default];
+
+Option  ::= '?' | '!' | '~';
+
+Default ::= R'.+'+;
+
+ReprDef Throw ['{', '}', '=', 'all', 'repr', '\n'] ::= 'repr' ('{' '\n'* SymbolList '\n'* '}' | '=' 'all' );
+
+SymbolList Throw[','] ::= Symbol (',' Symbol)*;
+
+Comment ::= '#' Default;
+
+Symbol ::= R'[a-zA-Z][a-zA-Z_]*';
+
+WeightedSymbol ::= Symbol '^'*;
+
+Relation Throw ['{', '}', '-', '\n'] ::= WeightedSymbol Left '-' Right WeightedSymbol '\n'* '{'
+                    '\n'*
+					[FieldDefList]
+					'}';
+
+
+Left ::= '<'{1, 2};
+Right ::= '>'{1, 2};
+
+Stmts Throw ['\n'] ::= ('\n' | Relation | TableDef)*;
