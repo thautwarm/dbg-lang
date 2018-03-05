@@ -18,10 +18,12 @@ setup(name='dbglang',
           'console_scripts': {
               'dbgc=dbglang.__main__:main'}
       },
+      install_requires=[
+          'EBNFParser>=1.0.1'
+      ],
       platforms='any',
       classifiers=[
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: Implementation :: CPython'],
-      zip_safe=False
-      )
+      zip_safe=False)
