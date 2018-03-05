@@ -38,7 +38,7 @@ class DBP:
         #    'repr': <__repr__返回的表达式>
         # }
 
-        self.RelationSpec: Dict[str, List[str]] = defaultdict(list)
+        self.RelationSpec: Dict[str,Set[str]] = defaultdict(set)
         # 全关系表 eg. User => ['course', 'group', ...]
 
         self.RefTable: Dict[str, Dict[str, Optional[str]]] = defaultdict(lambda: defaultdict(lambda: None))
@@ -49,8 +49,17 @@ class DBP:
         # 根据表名， 得到一组tuple, 每个tuple由一个关系和这个关系中需要删除的对象的名字。
         # 例如 RelationSpecForDestruction[User][Sign] = 'sign'( user - sign 一对多且 user对signs有所有权
 
+        self.LRType: Dict[str, Dict[str, str]] = defaultdict(dict)
+        # 根据左右表名，得到中间表名
+
+        self.LRRef: Dict[str, Dict[str, str]] = self.RefTable
+        # 根据左右表名，得到从左查右的关系名
+
         self.current_table_name: str = None
         # 当前处理胡table_name
+
+
+
 
     def ast_for_stmts(self, stmts: Union[str, Ast]) -> None:
         for stmt in stmts:
@@ -174,8 +183,11 @@ class DBP:
         name_to_ref_left = f'ref_{name_of_left}'
         name_to_ref_right = f'ref_{name_of_right}'
 
-        self.RelationSpec[upper_case_left_name].append(lower_case_right_name)
-        self.RelationSpec[upper_case_right_name].append(lower_case_left_name)
+        self.RelationSpec[upper_case_left_name].add(lower_case_right_name)
+        self.RelationSpec[upper_case_right_name].add(lower_case_left_name)
+
+        self.LRType[upper_case_left_name][upper_case_right_name] = f'{upper_case_left_name}{upper_case_right_name}'
+        self.LRType[upper_case_right_name][upper_case_left_name] = f'{upper_case_left_name}{upper_case_right_name}'
 
         self.RefTable[upper_case_left_name][upper_case_right_name] = name_to_ref_right
         self.RefTable[upper_case_right_name][upper_case_left_name] = name_to_ref_left

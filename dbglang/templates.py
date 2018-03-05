@@ -5,15 +5,14 @@ from sqlalchemy import Column as _Column
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from typing import Dict, Set, Any, List, Callable, Tuple, Type, Optional, Sequence as Seq
-
-
-##{custom_lib}##
-
+from abc import abstractmethod
 
 class Config:
     database_url: str
     database_connect_options: dict
     ##{config}##
+
+##{custom_lib}##
 
 
 engine = create_engine(Config.database_url,
@@ -29,17 +28,31 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 
+class FuncForRelations:
+
+    @abstractmethod
+    def __call__(self, *relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+        pass
+
+
+class FuncForEntity:
+
+    @abstractmethod
+    def __call__(self, entity) -> Optional[dict]:
+        pass
+
+
 class DeleteManager:
-    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], Callable[[Table], None]]] = {}
-    pre_entity_delete_events: Dict[Type[Table], Callable[[Table], None]] = {}
+    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], FuncForRelations]] = {}
+    pre_entity_delete_events: Dict[Type[Table], FuncForEntity] = {}
 
     @classmethod
-    def get_delete_fn(cls, manage_obj, delete_obj) -> Optional[Callable[[Table], None]]:
-        return DeleteManager.pre_relation_delete_events[type(manage_obj)].get(type(delete_obj))
+    def get_relation_delete_fn(cls, from_type: type, delete_type: type) -> FuncForRelations:
+        return cls.pre_relation_delete_events[from_type].get(delete_type)
 
     @classmethod
-    def delete(cls, obj) -> None:
-        return cls.get_delete_fn(obj)(obj)
+    def get_entity_delete_fn(cls, entity_type: type) -> FuncForEntity:
+        return cls.pre_entity_delete_events[entity_type]
 
     @staticmethod
     def Between(manage_type, delete_type: str):
@@ -65,7 +78,6 @@ def normal_delete_entity(obj):
 def normal_delete_relations(*relations):
     for each in relations:
         db_session.delete(each)
-
 
 
 class Column:

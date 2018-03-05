@@ -128,5 +128,19 @@ class Analyzer:
                         ).replace('##{methods}##', f'{entity_delete_codes}\n{relation_delete_codes}'
                         ).replace('##{custom_lib}##', '\n'.join(f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()))
 
+
+        def rec(v, symbol):
+            return key_to_eval(v, symbol=symbol) if isinstance(v, dict) else f'"{v}"' if not symbol and isinstance(v, str) else v
+
+        def key_to_eval(dic: dict, symbol=False) -> str:
+            dic = dict(dic)
+            return '{{{}}}'.format(", ".join(f'{k}: {rec(v, symbol)}' for k, v in dic.items()))
+
+        for_inspection = ("\nRefTable = {}\n".format(key_to_eval(self.dbp.RefTable)),
+                          "RelationSpec = {}\n".format(key_to_eval(self.dbp.RelationSpec)),
+                          "RelationSpecForDestruction = {}\n".format(key_to_eval(self.dbp.RelationSpecForDestruction)),
+                          'LRType = {}\n'.format(key_to_eval(self.dbp.LRType, symbol=True)),
+                          'LRRef = {}\n'.format(key_to_eval(self.dbp.LRRef)))
+
         with open(out_file, 'w') as f:
-            f.write(codes)
+            f.write(codes + '\n'.join(for_inspection))
