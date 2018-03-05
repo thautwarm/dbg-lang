@@ -2,9 +2,9 @@ from .dbg_compiler import compile
 import sys
 
 
-def main(*args):
-    compile(*args)
+def main():
+    compile(*sys.argv[1:])
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    main()

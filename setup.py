@@ -16,7 +16,7 @@ setup(name='dbglang',
       packages=['dbglang'],
       entry_points={
           'console_scripts': {
-              'dbgc=dbglang:main'}
+              'dbgc=dbglang.__main__:main'}
       },
       platforms='any',
       classifiers=[

@@ -38,7 +38,7 @@ DBG
         name: NameStr!
 
         repr{
-            
+
         }
 
     }
@@ -54,3 +54,19 @@ DBG
     User <<-> Some{     # 多对一关系
 
     }
+
+
+Downlaod & Usage
+========================
+
+
+.. code :: shell
+
+    pip install git+https://github.com/thautwarm/dbg-lang.git@master && cd dbg-lang/
+
+    dbgc db.dbg out.py import "* from customs"
+
+
+
+
+

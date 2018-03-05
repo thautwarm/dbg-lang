@@ -13,7 +13,7 @@ from customs import *
 class Config:
     database_url: str
     database_connect_options: dict
-
+    
 
 
 engine = create_engine(Config.database_url,
@@ -173,7 +173,7 @@ class UserCourse(Base):
     course_id = Column(Integer, ForeignKey("course.id"), primary_key=True)
 
     # fields
-
+    
 
     # relationship
     course: "Course" = relationship('Course', back_populates='ref_users', uselist=False)
@@ -191,7 +191,7 @@ class UserSome(Base):
     some_id = Column(Integer, ForeignKey("some.id"), primary_key=True)
 
     # fields
-
+    
 
     # relationship
     some: "Some" = relationship('Some', back_populates='ref_users', uselist=False)
