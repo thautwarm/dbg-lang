@@ -6,6 +6,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from typing import Dict, Set, Any, List, Callable, Tuple, Type, Optional, Sequence as Seq
 from abc import abstractmethod
+from collections import defaultdict
 
 class Config:
     database_url: str
@@ -43,7 +44,7 @@ class FuncForEntity:
 
 
 class DeleteManager:
-    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], FuncForRelations]] = {}
+    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], FuncForRelations]] = defaultdict(dict)
     pre_entity_delete_events: Dict[Type[Table], FuncForEntity] = {}
 
     @classmethod
@@ -87,5 +88,7 @@ class Column:
         return _Column(t, *args, **kwargs)
 
 ##{table_def}##
+
+Base.metadata.create_all(bind=engine)
 
 ##{methods}##
