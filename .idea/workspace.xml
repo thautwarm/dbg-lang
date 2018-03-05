@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="67f111a9-f1d8-4700-88e4-2f4efd054477" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/README.rst" afterPath="$PROJECT_DIR$/README.rst" />
-      <change beforePath="$PROJECT_DIR$/dbglang/__main__.py" afterPath="$PROJECT_DIR$/dbglang/__main__.py" />
-      <change beforePath="$PROJECT_DIR$/out.py" afterPath="$PROJECT_DIR$/out.py" />
-      <change beforePath="$PROJECT_DIR$/setup.py" afterPath="$PROJECT_DIR$/setup.py" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
