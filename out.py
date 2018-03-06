@@ -5,15 +5,15 @@ from sqlalchemy import Column as _Column
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from typing import Dict, Set, Any, List, Callable, Tuple, Type, Optional, Sequence as Seq
-
-
-from customs import *
-
+from abc import abstractmethod
+from collections import defaultdict
 
 class Config:
     database_url: str
     database_connect_options: dict
     
+
+from .customs import *
 
 
 engine = create_engine(Config.database_url,
@@ -29,17 +29,31 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 
+class FuncForRelations:
+
+    @abstractmethod
+    def __call__(self, *relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+        pass
+
+
+class FuncForEntity:
+
+    @abstractmethod
+    def __call__(self, entity) -> Optional[dict]:
+        pass
+
+
 class DeleteManager:
-    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], Callable[[Table], None]]] = {}
-    pre_entity_delete_events: Dict[Type[Table], Callable[[Table], None]] = {}
+    pre_relation_delete_events: Dict[Type[Table], Dict[Type[Table], FuncForRelations]] = defaultdict(dict)
+    pre_entity_delete_events: Dict[Type[Table], FuncForEntity] = {}
 
     @classmethod
-    def get_delete_fn(cls, manage_obj, delete_obj) -> Optional[Callable[[Table], None]]:
-        return DeleteManager.pre_relation_delete_events[type(manage_obj)].get(type(delete_obj))
+    def get_relation_delete_fn(cls, from_type: type, delete_type: type) -> FuncForRelations:
+        return cls.pre_relation_delete_events[from_type].get(delete_type)
 
     @classmethod
-    def delete(cls, obj) -> None:
-        return cls.get_delete_fn(obj)(obj)
+    def get_entity_delete_fn(cls, entity_type: type) -> FuncForEntity:
+        return cls.pre_entity_delete_events[entity_type]
 
     @staticmethod
     def Between(manage_type, delete_type: str):
@@ -65,7 +79,6 @@ def normal_delete_entity(obj):
 def normal_delete_relations(*relations):
     for each in relations:
         db_session.delete(each)
-
 
 
 class Column:
@@ -202,11 +215,13 @@ class UserSome(Base):
         return f"UserSome{{ user_id:{self.user_id}, some_id:{self.some_id} }}"
 
 
+Base.metadata.create_all(bind=engine)
+
 @DeleteManager.For(User)
 def delete_user(entity) -> Optional[dict]:
-    ret = {'item': delete_item_from_user(*entity.ref_items),
-            'course': delete_course_from_user(*entity.ref_courses),
-            'some': delete_some_from_user(*entity.ref_somes)}
+    ret = {'course': delete_course_from_user(*entity.ref_courses),
+            'some': delete_some_from_user(*entity.ref_somes),
+            'item': delete_item_from_user(*entity.ref_items)}
     normal_delete_entity(entity)
     return ret
 
@@ -246,6 +261,16 @@ def delete_user_some(entity) -> Optional[dict]:
     return None
 
 
+@DeleteManager.Between(User, Course)
+def delete_course_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+    normal_delete_relations(*relations)
+    return None
+
+@DeleteManager.Between(User, Some)
+def delete_some_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+    normal_delete_relations(*relations)
+    return None
+
 @DeleteManager.Between(User, Item)
 def delete_item_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
     if not relations:
@@ -258,16 +283,6 @@ def delete_item_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Opti
 
     return tuple(__each__(each) for each in relations)
 
-
-@DeleteManager.Between(User, Course)
-def delete_course_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
-    normal_delete_relations(*relations)
-    return None
-
-@DeleteManager.Between(User, Some)
-def delete_some_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
-    normal_delete_relations(*relations)
-    return None
 
 @DeleteManager.Between(Item, User)
 def delete_user_from_item(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
@@ -284,3 +299,15 @@ def delete_user_from_some(*relations) -> Optional[Seq[Tuple[Optional[dict], Opti
     normal_delete_relations(*relations)
     return None
 
+
+RefTable = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
+
+RelationSpec = {User: {'course', 'some', 'item'}, Item: {'user'}, Course: {'user'}, Some: {'user'}, UserItem: set(), UserCourse: set(), UserSome: set()}
+
+RelationSpecForDestruction = {User: {Item: "item"}, Item: {}, Course: {}, Some: {}}
+
+LRType = {User: {Item: UserItem, Course: UserCourse, Some: UserSome}, Item: {User: UserItem}, Course: {User: UserCourse}, Some: {User: UserSome}}
+
+LRRef = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
+
+FieldSpec = {User: {'id', 'openid', 'account', 'nickname', 'sex', 'password', 'permission'}, Item: {'id', 'name', 'cost'}, Course: {'time_seq', 'id', 'location'}, Some: {'id', 'name'}}

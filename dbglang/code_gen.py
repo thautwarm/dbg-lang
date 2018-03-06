@@ -1,6 +1,7 @@
 from .table_info_gen import DBP
 from .parse import parse
 from typing import Dict
+from .auto_db_test_maker import TestGenerateSession
 import re
 
 Indent = '    '
@@ -42,6 +43,7 @@ class Analyzer:
         self.custom_libs = custom_libs
 
     def generate_table(self, table_name, table: dict) -> str:
+
         res = ("class {TableName}(Base):\n"
                "{Indent}__tablename__ = '{table_name}'\n\n"
                "{Indent}# primary keys\n{Indent}{primaries}\n\n"
@@ -113,6 +115,29 @@ class Analyzer:
     def generate(self, out_file: str):
 
         import os
+
+        def generate_data(spec: Dict[str, dict]):
+            session = TestGenerateSession()
+
+            def format_attr(attr_name, attr_type):
+                return f'{attr_name}={session.generate_inst_for_type(attr_type)}'
+
+            return f', \n{Indent*3}'.join([format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
+                                           spec['primary'].items()] +
+                                          [format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
+                                           spec['field'].items()])
+
+        test_samples = {k:
+                            "{}List = [{}]".format(k, f',\n{Indent*3}'.join([f'{k}({generate_data(v)})' for _ in range(10)])) for
+                        k, v
+                        in self.dbp.tables.items()}
+
+        with open(os.path.splitext(out_file)[0] + '.test_samples.py', 'w') as f:
+            f.write('from random import randint\n'
+                    'from datetime import datetime, timedelta\n' +
+                    '\n'.join(f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()) + '\n' +
+                    '\n'.join(test_samples.values()))
+
         table_def_codes = '\n'.join(self.generate_table(k, v) for k, v in self.dbp.tables.items())
 
         entity_delete_codes = '\n'.join(self.make_entity_delete(k) for k in self.dbp.tables)
@@ -124,13 +149,14 @@ class Analyzer:
             templates = f.read()
 
         codes = templates.replace('##{config}##', ''.join(self.config_codes)
-                        ).replace('##{table_def}##', table_def_codes
-                        ).replace('##{methods}##', f'{entity_delete_codes}\n{relation_delete_codes}'
-                        ).replace('##{custom_lib}##', '\n'.join(f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()))
-
+                                  ).replace('##{table_def}##', table_def_codes
+                                            ).replace('##{methods}##', f'{entity_delete_codes}\n{relation_delete_codes}'
+                                                      ).replace('##{custom_lib}##', '\n'.join(
+            f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()))
 
         def rec(v, symbol):
-            return key_to_eval(v, symbol=symbol) if isinstance(v, dict) else f'"{v}"' if not symbol and isinstance(v, str) else v
+            return key_to_eval(v, symbol=symbol) if isinstance(v, dict) else f'"{v}"' if not symbol and isinstance(v,
+                                                                                                                   str) else v
 
         def key_to_eval(dic: dict, symbol=False) -> str:
             dic = dict(dic)
@@ -140,7 +166,8 @@ class Analyzer:
                           "RelationSpec = {}\n".format(key_to_eval(self.dbp.RelationSpec)),
                           "RelationSpecForDestruction = {}\n".format(key_to_eval(self.dbp.RelationSpecForDestruction)),
                           'LRType = {}\n'.format(key_to_eval(self.dbp.LRType, symbol=True)),
-                          'LRRef = {}\n'.format(key_to_eval(self.dbp.LRRef)))
+                          'LRRef = {}\n'.format(key_to_eval(self.dbp.LRRef)),
+                          'FieldSpec = {}\n'.format(key_to_eval(self.dbp.FieldSpec)))
 
         with open(out_file, 'w') as f:
             f.write(codes + '\n'.join(for_inspection))

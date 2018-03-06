@@ -38,6 +38,8 @@ class DBP:
         #    'repr': <__repr__返回的表达式>
         # }
 
+        self.FieldSpec: Dict[str, Set[str]] = defaultdict(set)
+
         self.RelationSpec: Dict[str,Set[str]] = defaultdict(set)
         # 全关系表 eg. User => ['course', 'group', ...]
 
@@ -101,6 +103,7 @@ class DBP:
         if not repr:
             repr = repr_for(table_name, *primaries.keys(), *fields.keys())
 
+        self.FieldSpec[table_name] = set.union(set(primaries.keys()), fields.keys())
         self.tables[table_name] = {
             'primary': primaries,
             'field': fields,
