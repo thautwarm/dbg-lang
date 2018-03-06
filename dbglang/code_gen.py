@@ -118,7 +118,7 @@ class Analyzer:
 
         def generate_data(table_name: str, spec: Dict[str, dict]):
             session = TestGenerateSession()
-            sample_num = 10
+            sample_num = 500
 
             def format_attr(attr_name, attr_type):
                 return f'{attr_name}={session.generate_inst_for_type(attr_type)}'

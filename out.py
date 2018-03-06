@@ -219,9 +219,9 @@ Base.metadata.create_all(bind=engine)
 
 @DeleteManager.For(User)
 def delete_user(entity) -> Optional[dict]:
-    ret = {'course': delete_course_from_user(*entity.ref_courses),
+    ret = {'item': delete_item_from_user(*entity.ref_items),
             'some': delete_some_from_user(*entity.ref_somes),
-            'item': delete_item_from_user(*entity.ref_items)}
+            'course': delete_course_from_user(*entity.ref_courses)}
     normal_delete_entity(entity)
     return ret
 
@@ -261,16 +261,6 @@ def delete_user_some(entity) -> Optional[dict]:
     return None
 
 
-@DeleteManager.Between(User, Course)
-def delete_course_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
-    normal_delete_relations(*relations)
-    return None
-
-@DeleteManager.Between(User, Some)
-def delete_some_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
-    normal_delete_relations(*relations)
-    return None
-
 @DeleteManager.Between(User, Item)
 def delete_item_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
     if not relations:
@@ -283,6 +273,16 @@ def delete_item_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Opti
 
     return tuple(__each__(each) for each in relations)
 
+
+@DeleteManager.Between(User, Some)
+def delete_some_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+    normal_delete_relations(*relations)
+    return None
+
+@DeleteManager.Between(User, Course)
+def delete_course_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
+    normal_delete_relations(*relations)
+    return None
 
 @DeleteManager.Between(Item, User)
 def delete_user_from_item(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:
@@ -302,7 +302,7 @@ def delete_user_from_some(*relations) -> Optional[Seq[Tuple[Optional[dict], Opti
 
 RefTable = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
 
-RelationSpec = {User: {'course', 'some', 'item'}, Item: {'user'}, Course: {'user'}, Some: {'user'}, UserItem: set(), UserCourse: set(), UserSome: set()}
+RelationSpec = {User: {'item', 'some', 'course'}, Item: {'user'}, Course: {'user'}, Some: {'user'}, UserItem: set(), UserCourse: set(), UserSome: set()}
 
 RelationSpecForDestruction = {User: {Item: "item"}, Item: {}, Course: {}, Some: {}}
 
@@ -310,4 +310,4 @@ LRType = {User: {Item: UserItem, Course: UserCourse, Some: UserSome}, Item: {Use
 
 LRRef = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
 
-FieldSpec = {User: {'openid', 'permission', 'nickname', 'account', 'password', 'sex', 'id'}, Item: {'cost', 'id', 'name'}, Course: {'time_seq', 'id', 'location'}, Some: {'id', 'name'}}
+FieldSpec = {User: {'nickname', 'account', 'id', 'openid', 'password', 'sex', 'permission'}, Item: {'cost', 'name', 'id'}, Course: {'location', 'time_seq', 'id'}, Some: {'name', 'id'}}
