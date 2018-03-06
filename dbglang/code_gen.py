@@ -116,27 +116,30 @@ class Analyzer:
 
         import os
 
-        def generate_data(spec: Dict[str, dict]):
+        def generate_data(table_name: str, spec: Dict[str, dict]):
             session = TestGenerateSession()
+            sample_num = 10
 
             def format_attr(attr_name, attr_type):
                 return f'{attr_name}={session.generate_inst_for_type(attr_type)}'
 
-            return f', \n{Indent*3}'.join([format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
-                                           spec['primary'].items()] +
-                                          [format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
-                                           spec['field'].items()])
+            def format_attrs(_spec):
+                return f', \n{Indent*3}'.join([format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
+                                               _spec['primary'].items()] +
+                                              [format_attr(attr_name, more_info['__type__']) for attr_name, more_info in
+                                               _spec['field'].items()])
 
-        test_samples = {k:
-                            "{}List = [{}]".format(k, f',\n{Indent*3}'.join([f'{k}({generate_data(v)})' for _ in range(10)])) for
-                        k, v
-                        in self.dbp.tables.items()}
+            return "{}List = [\n{}{}]".format(table_name,
+                                              Indent * 3,
+                                              f',\n{Indent*3}'
+                                              .join([f'{table_name}({format_attrs(spec)})'
+                                                     for _ in range(sample_num)]))
 
         with open(os.path.splitext(out_file)[0] + '.test_samples.py', 'w') as f:
             f.write('from random import randint\n'
                     'from datetime import datetime, timedelta\n' +
                     '\n'.join(f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()) + '\n' +
-                    '\n'.join(test_samples.values()))
+                    '\n'.join(generate_data(k, v) for k, v in self.dbp.tables.items()))
 
         table_def_codes = '\n'.join(self.generate_table(k, v) for k, v in self.dbp.tables.items())
 

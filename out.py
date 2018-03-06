@@ -310,4 +310,4 @@ LRType = {User: {Item: UserItem, Course: UserCourse, Some: UserSome}, Item: {Use
 
 LRRef = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
 
-FieldSpec = {User: {'id', 'openid', 'account', 'nickname', 'sex', 'password', 'permission'}, Item: {'id', 'name', 'cost'}, Course: {'time_seq', 'id', 'location'}, Some: {'id', 'name'}}
+FieldSpec = {User: {'openid', 'permission', 'nickname', 'account', 'password', 'sex', 'id'}, Item: {'cost', 'id', 'name'}, Course: {'time_seq', 'id', 'location'}, Some: {'id', 'name'}}
