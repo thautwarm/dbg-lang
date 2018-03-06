@@ -28,7 +28,7 @@ class TestGenerateSession:
     @classmethod
     def str_inst_generator_maker(cls, n: int):
         words = permutations(
-            set('苟利国家生死以岂因福祸避趋之安能摧眉折腰事学霸使我不得玩贪玩蓝月厅下如积水空明水中藻荇交横盖橘子皮也独秀清末民初人也名声噪于李大钊前排而挡其黑板也故世人称独秀请你下来也'), n)
+            set('abcdefghijklmnopqrstuvwxyz'), n)
         for each in words:
             yield '"' + ''.join(each) + '"'
 
@@ -38,13 +38,15 @@ class TestGenerateSession:
 
     @classmethod
     def enum_inst_maker(cls, type_name: str):
-        return f'{type_name}(randint(1, len({type_name})))'
+        return f'tuple({type_name})[randint(0, len({type_name}))-1]'
 
     @classmethod
     def generate_inst_for_type(cls, x: str):
 
         if x == 'Integer':
             return next(cls.int_stream)
+        elif x == 'SmallInteger':
+            return randint(1, 10)
         elif x.startswith('String('):
             i = x[7:10]
             return {'20)': lambda: next(cls.name_str_gen),
@@ -52,6 +54,9 @@ class TestGenerateSession:
                     '200': lambda: next(cls.info_str_gen),
                     '500': lambda: next(cls.info_str_gen)}[i]()
         elif x.startswith('Date'):
-            return cls.time_inst_maker(randint(1, 23))
+            r = cls.time_inst_maker(randint(1, 23))
+            if not x.endswith('Time'):
+                r = f'({r}).date()'
+            return r
         else:
             return cls.enum_inst_maker(x)

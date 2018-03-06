@@ -138,7 +138,6 @@ class Analyzer:
         with open(os.path.splitext(out_file)[0] + '.test_samples.py', 'w') as f:
             f.write('from random import randint\n'
                     'from datetime import datetime, timedelta\n' +
-                    '\n'.join(f'from {_from} import {_import}' for _import, _from in self.custom_libs.items()) + '\n' +
                     '\n'.join(generate_data(k, v) for k, v in self.dbp.tables.items()))
 
         table_def_codes = '\n'.join(self.generate_table(k, v) for k, v in self.dbp.tables.items())
