@@ -2,18 +2,24 @@ from sqlalchemy import (create_engine, Integer, String,
                         DateTime, ForeignKey, Sequence,
                         SmallInteger, Enum, Date, Table)
 from sqlalchemy import Column as _Column
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from typing import Dict, Set, Any, List, Callable, Tuple, Type, Optional, Sequence as Seq
 from abc import abstractmethod
 from collections import defaultdict
+
 
 class Config:
     database_url: str
     database_connect_options: dict
     
 
+
 from .customs import *
+
+
+def filter_from_table(table, cond):
+    return getattr(table, 'query').filter(cond)
 
 
 engine = create_engine(Config.database_url,
@@ -87,6 +93,7 @@ class Column:
             t = Enum(t)
         return _Column(t, *args, **kwargs)
 
+
 class User(Base):
     __tablename__ = 'user'
 
@@ -102,9 +109,21 @@ class User(Base):
     nickname = Column(String(50))
 
     # relationship
-    ref_items: "List[UserItem]" = relationship('UserItem', back_populates='user')
-    ref_courses: "List[UserCourse]" = relationship('UserCourse', back_populates='user')
-    ref_somes: "List[UserSome]" = relationship('UserSome', back_populates='user')
+    
+    @property
+    def ref_items(self) -> "List[UserItem]":
+        return filter_from_table(UserItem, UserItem.user_id == self.id)
+
+    
+    @property
+    def ref_courses(self) -> "List[UserCourse]":
+        return filter_from_table(UserCourse, UserCourse.user_id == self.id)
+
+    
+    @property
+    def ref_somes(self) -> "List[UserSome]":
+        return filter_from_table(UserSome, UserSome.user_id == self.id)
+
 
     # repr
     def __repr__(self):
@@ -121,7 +140,11 @@ class Item(Base):
     cost = Column(Integer, nullable=False)
 
     # relationship
-    ref_users: "List[UserItem]" = relationship('UserItem', back_populates='item')
+    
+    @property
+    def ref_users(self) -> "List[UserItem]":
+        return filter_from_table(UserItem, UserItem.item_id == self.id)
+
 
     # repr
     def __repr__(self):
@@ -138,7 +161,11 @@ class Course(Base):
     time_seq = Column(String(20), nullable=False)
 
     # relationship
-    ref_users: "List[UserCourse]" = relationship('UserCourse', back_populates='course')
+    
+    @property
+    def ref_users(self) -> "List[UserCourse]":
+        return filter_from_table(UserCourse, UserCourse.course_id == self.id)
+
 
     # repr
     def __repr__(self):
@@ -154,7 +181,11 @@ class Some(Base):
     name = Column(String(50), unique=True, nullable=False)
 
     # relationship
-    ref_users: "List[UserSome]" = relationship('UserSome', back_populates='some')
+    
+    @property
+    def ref_users(self) -> "List[UserSome]":
+        return filter_from_table(UserSome, UserSome.some_id == self.id)
+
 
     # repr
     def __repr__(self):
@@ -164,15 +195,23 @@ class UserItem(Base):
     __tablename__ = 'user_item'
 
     # primary keys
-    user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
-    item_id = Column(Integer, ForeignKey("item.id"), primary_key=True)
+    user_id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, primary_key=True)
 
     # fields
     some = Column(String(50))
 
     # relationship
-    item: "Item" = relationship('Item', back_populates='ref_users', uselist=False)
-    user: "User" = relationship('User', back_populates='ref_items', uselist=False)
+    
+    @property
+    def user(self) -> "Optional[User]":
+        return filter_from_table(User, User.id == self.user_id).first()
+
+    
+    @property
+    def item(self) -> "Optional[Item]":
+        return filter_from_table(Item, Item.id == self.item_id).first()
+
 
     # repr
     def __repr__(self):
@@ -182,15 +221,23 @@ class UserCourse(Base):
     __tablename__ = 'user_course'
 
     # primary keys
-    user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
-    course_id = Column(Integer, ForeignKey("course.id"), primary_key=True)
+    user_id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, primary_key=True)
 
     # fields
     
 
     # relationship
-    course: "Course" = relationship('Course', back_populates='ref_users', uselist=False)
-    user: "User" = relationship('User', back_populates='ref_courses', uselist=False)
+    
+    @property
+    def user(self) -> "Optional[User]":
+        return filter_from_table(User, User.id == self.user_id).first()
+
+    
+    @property
+    def course(self) -> "Optional[Course]":
+        return filter_from_table(Course, Course.id == self.course_id).first()
+
 
     # repr
     def __repr__(self):
@@ -200,15 +247,23 @@ class UserSome(Base):
     __tablename__ = 'user_some'
 
     # primary keys
-    user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
-    some_id = Column(Integer, ForeignKey("some.id"), primary_key=True)
+    user_id = Column(Integer, primary_key=True)
+    some_id = Column(Integer, primary_key=True)
 
     # fields
     
 
     # relationship
-    some: "Some" = relationship('Some', back_populates='ref_users', uselist=False)
-    user: "User" = relationship('User', back_populates='ref_somes', uselist=False)
+    
+    @property
+    def user(self) -> "Optional[User]":
+        return filter_from_table(User, User.id == self.user_id).first()
+
+    
+    @property
+    def some(self) -> "Optional[Some]":
+        return filter_from_table(Some, Some.id == self.some_id).first()
+
 
     # repr
     def __repr__(self):
@@ -266,8 +321,9 @@ def delete_item_from_user(*relations) -> Optional[Seq[Tuple[Optional[dict], Opti
     if not relations:
         return ()
     def __each__(e) -> Tuple[dict, dict]:
-        r = delete_item(e.item)
+        temp = e.item
         l = delete_user_item(e)
+        r = delete_item(temp)
         return l, r
 
 
@@ -310,4 +366,4 @@ LRType = {User: {Item: UserItem, Course: UserCourse, Some: UserSome}, Item: {Use
 
 LRRef = {User: {Item: "ref_items", Course: "ref_courses", Some: "ref_somes"}, Item: {User: "ref_users"}, Course: {User: "ref_users"}, Some: {User: "ref_users"}}
 
-FieldSpec = {User: {'nickname', 'account', 'id', 'openid', 'password', 'sex', 'permission'}, Item: {'cost', 'name', 'id'}, Course: {'location', 'time_seq', 'id'}, Some: {'name', 'id'}}
+FieldSpec = {User: {'sex', 'nickname', 'openid', 'account', 'permission', 'id', 'password'}, Item: {'id', 'cost', 'name'}, Course: {'id', 'time_seq', 'location'}, Some: {'id', 'name'}}
