@@ -26,6 +26,23 @@ def render_column(v: dict) -> str:
     return ', '.join(ret)
 
 
+def relationship(reference_type_name: str, from_field: str, ref_field: str, use_list=True):
+    relation_table = None
+
+    @property
+    def reference(self):
+        nonlocal relation_table
+        if not relation_table:
+            relation_table = eval(reference_type_name)
+
+        res = relation_table.query.filter(getattr(relation_table, ref_field) == getattr(self, from_field))
+        if not use_list:
+            return res.frist()
+        return res
+
+    return reference
+
+
 relation_delete_spec = ("@DeleteManager.Between({ManageType}, {DeleteType})\n"
                         "def delete_{delete_type}_from_{manage_type}(*relations) -> Optional[Seq[Tuple[Optional[dict], Optional[dict]]]]:\n"
                         "{codes}\n")
@@ -63,7 +80,7 @@ class Analyzer:
             fields=Indentn.join(f'{field_name} = Column({render_column(v)})' for field_name, v in
                                 table['field'].items()),
 
-            relations=Indentn.join(f'{field_name}: "{t}" = {v}' for field_name, (t, v) in table['relation'].items()),
+            relations=Indentn.join(table['relation']),
 
             repr=table['repr'])
 
@@ -79,8 +96,9 @@ class Analyzer:
             codes = (f"{Indent}if not relations:\n"
                      f"{Indent*2}return ()\n"
                      f"{Indent}def __each__(e) -> Tuple[dict, dict]:\n"
-                     f"{Indent*2}r = delete_{delete_type.lower()}(e.{delete_field_of_relation})\n"
+                     f"{Indent*2}temp = e.{delete_field_of_relation}\n"
                      f"{Indent*2}l = delete_{manage_type.lower()}_{delete_type.lower()}(e)\n"
+                     f"{Indent*2}r = delete_{delete_type.lower()}(temp)\n"
                      f"{Indent*2}return l, r\n"
                      "\n\n"
                      f"{Indent}return tuple(__each__(each) for each in relations)\n")

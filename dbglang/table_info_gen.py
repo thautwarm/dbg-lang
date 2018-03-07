@@ -15,6 +15,17 @@ def repr_for(name, *fields):
     return 'f"{name}{{{{ {field_list} }}}}"'.format(name=name, field_list=field_list)
 
 
+def make_reference(ref_name: str, reference_type_name: str, from_field: str, ref_field: str, use_list=True):
+    output_type_name = f'{{}}[{reference_type_name}]'.format('List' if use_list else 'Optional')
+    print(ref_name)
+    res = (f'\n{Indent}@property\n'
+           f'{Indent}def {ref_name}(self) -> "{output_type_name}":\n'
+           f'{Indent*2}return filter_from_table({reference_type_name}, {reference_type_name}.{ref_field} == self.{from_field})')
+
+    res += '\n' if use_list else '.first()\n'
+    return res
+
+
 class DBP:
     """
     解析一个dbp文件
@@ -40,7 +51,7 @@ class DBP:
 
         self.FieldSpec: Dict[str, Set[str]] = defaultdict(set)
 
-        self.RelationSpec: Dict[str,Set[str]] = defaultdict(set)
+        self.RelationSpec: Dict[str, Set[str]] = defaultdict(set)
         # 全关系表 eg. User => ['course', 'group', ...]
 
         self.RefTable: Dict[str, Dict[str, Optional[str]]] = defaultdict(lambda: defaultdict(lambda: None))
@@ -59,9 +70,6 @@ class DBP:
 
         self.current_table_name: str = None
         # 当前处理胡table_name
-
-
-
 
     def ast_for_stmts(self, stmts: Union[str, Ast]) -> None:
         for stmt in stmts:
@@ -108,7 +116,7 @@ class DBP:
             'primary': primaries,
             'field': fields,
             'repr': repr,
-            'relation': {}}
+            'relation': []}
 
     def ast_for_field_def(self, field_def: Ast) -> Tuple[str, dict]:
         (field_name,), type = field_def
@@ -160,12 +168,10 @@ class DBP:
 
         primaries = {lower_case_left_name + '_id':
                          dict(primary_key=True,
-                              __type__='Integer',
-                              __foreign__=f'ForeignKey("{lower_case_left_name}.id")'),
+                              __type__='Integer'),
                      lower_case_right_name + '_id':
                          dict(primary_key=True,
-                              __type__='Integer',
-                              __foreign__=f'ForeignKey("{lower_case_right_name}.id")')}
+                              __type__='Integer')}
 
         upper_case_table_name = f'{upper_case_left_name}{upper_case_right_name}'
 
@@ -174,7 +180,7 @@ class DBP:
         self.tables[upper_case_table_name] = {'primary': primaries,
                                               'field': fields,
                                               'repr': repr,
-                                              'relation': {}}
+                                              'relation': []}
 
         """
         单数依然用-s结尾，表示列表。
@@ -195,25 +201,19 @@ class DBP:
         self.RefTable[upper_case_left_name][upper_case_right_name] = name_to_ref_right
         self.RefTable[upper_case_right_name][upper_case_left_name] = name_to_ref_left
 
-        self.tables[upper_case_table_name]['relation'].update(
-            {
-                lower_case_right_name: (f"{upper_case_right_name}",  # type
-                                        f"relationship('{upper_case_right_name}', "
-                                        f"back_populates='{name_to_ref_left}', uselist=False)"),
-                lower_case_left_name: (f'{upper_case_left_name}',  # type
-                                       f"relationship('{upper_case_left_name}', "
-                                       f"back_populates='{name_to_ref_right}', uselist=False)")
-            })
+        self.tables[upper_case_table_name]['relation'].extend([
+            make_reference(lower_case_left_name, upper_case_left_name, f'{lower_case_left_name}_id', 'id',
+                           use_list=False),
+            make_reference(lower_case_right_name, upper_case_right_name, f'{lower_case_right_name}_id', 'id',
+                           use_list=False)])
 
-        self.tables[upper_case_left_name]['relation'][
-            name_to_ref_right] = (f"List[{upper_case_left_name}{upper_case_right_name}]",  # type
-                                  f"relationship('{upper_case_left_name}{upper_case_right_name}', "
-                                  f"back_populates='{lower_case_left_name}')")
+        self.tables[upper_case_right_name]['relation'].append(
+            make_reference(name_to_ref_left, upper_case_table_name, 'id', f'{lower_case_right_name}_id',
+                           use_list=True))
 
-        self.tables[upper_case_right_name]['relation'][
-            name_to_ref_left] = (f"List[{upper_case_left_name}{upper_case_right_name}]",  # type
-                                 f"relationship('{upper_case_left_name}{upper_case_right_name}', "
-                                 f"back_populates='{lower_case_right_name}')")
+        self.tables[upper_case_left_name]['relation'].append(
+            make_reference(name_to_ref_right, upper_case_table_name, 'id', f'{lower_case_left_name}_id',
+                           use_list=True))
 
         if l_weights is 0 and r_weights is 0:
             """互相之间无所有权关系

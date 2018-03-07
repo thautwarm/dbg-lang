@@ -2,18 +2,24 @@ from sqlalchemy import (create_engine, Integer, String,
                         DateTime, ForeignKey, Sequence,
                         SmallInteger, Enum, Date, Table)
 from sqlalchemy import Column as _Column
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from typing import Dict, Set, Any, List, Callable, Tuple, Type, Optional, Sequence as Seq
 from abc import abstractmethod
 from collections import defaultdict
+
 
 class Config:
     database_url: str
     database_connect_options: dict
     ##{config}##
 
+
 ##{custom_lib}##
+
+
+def filter_from_table(table, cond):
+    return getattr(table, 'query').filter(cond)
 
 
 engine = create_engine(Config.database_url,
@@ -86,6 +92,7 @@ class Column:
         if 'sqlalchemy' not in t.__module__:
             t = Enum(t)
         return _Column(t, *args, **kwargs)
+
 
 ##{table_def}##
 
