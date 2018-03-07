@@ -16,7 +16,7 @@ def repr_for(name, *fields):
 
 
 def make_reference(ref_name: str, reference_type_name: str, from_field: str, ref_field: str, use_list=True):
-    output_type_name = f'{{}}[{reference_type_name}]'.format('List' if use_list else 'Optional')
+    output_type_name = f'{{}}[{reference_type_name}]'.format('Query' if use_list else 'Optional')
     res = (f'\n{Indent}@property\n'
            f'{Indent}def {ref_name}(self) -> "{output_type_name}":\n'
            f'{Indent*2}return filter_from_table({reference_type_name}, {reference_type_name}.{ref_field} == self.{from_field})')
