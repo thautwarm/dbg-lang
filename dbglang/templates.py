@@ -25,6 +25,10 @@ class Session(_Session, scoped_session):
         raise NotImplemented
 
 
+
+class ITable:
+    query: 'Query[ITable]'
+    
 class Query(Generic[T]):
 
     @abstractmethod
@@ -323,11 +327,6 @@ class DeleteManager:
             return func
 
         return wrap
-
-
-def normal_delete_entity(obj):
-    db_session.delete(obj)
-
 
 def normal_delete_relations(*relations):
     for each in relations:

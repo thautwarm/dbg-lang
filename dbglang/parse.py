@@ -5,7 +5,7 @@ from .dbp import Stmts, token
 
 
 def parse(input_filename) -> Ast:
-    with open(input_filename) as f:
+    with open(input_filename, encoding='utf8') as f:
         s = f.read()
     parser = handle_error(Stmts)
     tokens = token(s)

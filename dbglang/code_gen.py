@@ -48,7 +48,7 @@ relation_delete_spec = ("@DeleteManager.Between({ManageType}, {DeleteType})\n"
                         "{codes}\n")
 
 entity_delete_spec = ("@DeleteManager.For({EntityType})\n"
-                      "def delete_{entity_type}(entity) -> Optional[dict]:\n"
+                      "def delete_{entity_type}(entity) -> {RetType}:\n"
                       "{codes}\n")
 
 
@@ -61,7 +61,7 @@ class Analyzer:
 
     def generate_table(self, table_name, table: dict) -> str:
 
-        res = ("class {TableName}(Base):\n"
+        res = ("class {TableName}(Base, ITable):\n"
                "{Indent}__tablename__ = '{table_name}'\n\n"
                "{Indent}# primary keys\n{Indent}{primaries}\n\n"
                "{Indent}# fields\n{Indent}{fields}\n\n"
@@ -95,7 +95,7 @@ class Analyzer:
         else:
             codes = (f"{Indent}if not relations:\n"
                      f"{Indent*2}return ()\n"
-                     f"{Indent}def __each__(e) -> Tuple[dict, dict]:\n"
+                     f"{Indent}def __each__(e) -> Tuple[Optional[dict], Optional[dict]]:\n"
                      f"{Indent*2}temp = e.{delete_field_of_relation}\n"
                      f"{Indent*2}l = delete_{manage_type.lower()}_{delete_type.lower()}(e)\n"
                      f"{Indent*2}r = delete_{delete_type.lower()}(temp)\n"
@@ -111,8 +111,8 @@ class Analyzer:
         relations_to_delete = self.dbp.RelationSpec[entity_type]
 
         if not relations_to_delete:
-            codes = (f"{Indent}normal_delete_entity(entity)\n"
-                     f"{Indent}return None\n")
+            codes = f"{Indent}{entity_type}.query.filter_by(id=entity.id) if hasattr(entity, 'id') else db_session.delete(entity)\n"
+            ret_type = 'None'
         else:
             lower_case_entity_type_name = entity_type.lower()
             key_list = []
@@ -121,12 +121,14 @@ class Analyzer:
                 relations = f'entity.{self.dbp.RefTable[entity_type][each.capitalize()]}'
                 elem = f"'{each}': delete_{each}_from_{lower_case_entity_type_name}(*{relations})"
                 key_list.append(elem)
-
-            codes = ('{Indent}ret = {{{content}}}\n'
-                     '{Indent}normal_delete_entity(entity)\n'
-                     '{Indent}return ret').format(Indent=Indent, content=f',\n{Indent*3}'.join(key_list))
+            content=f',\n{Indent*3}'.join(key_list)
+            codes = (f'{Indent}ret = {{{content}}}\n'
+                     f"{Indent}{entity_type}.query.filter_by(id=entity.id) if hasattr(entity, 'id') else db_session.delete(entity)\n"
+                     f'{Indent}return ret')
+            ret_type = 'Optional[Dict]'
 
         return entity_delete_spec.format(codes=codes,
+                                         RetType=ret_type,
                                          EntityType=entity_type,
                                          entity_type='_'.join(map(str.lower, re.findall('[A-Z][a-z_]*', entity_type))))
 

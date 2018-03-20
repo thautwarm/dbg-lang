@@ -19,7 +19,7 @@ setup(name='dbglang',
               'dbgc=dbglang.__main__:main'}
       },
       install_requires=[
-          'EBNFParser>=1.0.1'
+          'EBNFParser==1.1'
       ],
       platforms='any',
       classifiers=[
